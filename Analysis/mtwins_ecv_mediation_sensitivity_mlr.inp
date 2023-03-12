@@ -1,0 +1,35 @@
+TITLE: GLS MTwiNS ADI-ECV-AMY Mediation Model
+
+DATA: 
+	FILE IS mtwins_ecv_03122023.csv; 
+	FORMAT IS FREE;
+	TYPE IS INDIVIDUAL;
+
+VARIABLE:
+	NAMES ARE famid twinid twsex twage twrace pceduc income
+	adi adiz ecv ecvz rthreat rthreatz lthreat lthreatz
+	rneut rneutz lneut lneutz nurture nurturez;
+	
+	USEVARIABLES ARE famid twage twsex twrace rthreatz ecvz adiz
+	pceduc income;
+	
+	MISSING ARE ALL (-9999);
+	CLUSTER = famid;
+	
+ANALYSIS:
+	TYPE = COMPLEX;
+	ESTIMATOR = MLR;
+
+MODEL:
+	ecvz ON adiz twage twsex twrace pceduc income; !a path
+	rthreatz ON ecvz; !b path
+	rthreatz ON adiz twage twsex twrace pceduc income; !c path
+	
+	ecvz adiz twage twsex twrace pceduc income;
+
+MODEL INDIRECT:
+	rthreatz IND adiz; 
+
+OUTPUT: 
+	sampstat cinterval standardized;
+	
