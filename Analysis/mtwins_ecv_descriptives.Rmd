@@ -1,0 +1,224 @@
+---
+title: "MTwiNS Exposure to Community Violence"
+author: "Gabriela Suarez"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    theme: spacelab
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    code_folding: show
+    self_contained: yes
+    df_print: paged
+---
+
+```{r setup, message=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Load Packages
+```{r packages, message=FALSE}
+library(readr)
+library(tidyverse)
+library(psych)
+library(Hmisc)
+library(corrplot)
+library(stats)
+library(ggplot2)
+```
+
+# 2. Load Data
+```{r data, message=FALSE}
+cov = read_csv("mtwins_ecv_covariates.csv")
+amy = read_csv("main_effects_scan-cov_extracted_data.csv")
+```
+
+## 2.1. Prep & Merge datasets
+```{r prep, message=FALSE}
+cov[cov==-99] = NA
+df = full_join(cov, amy, by="MTWINSID") 
+```
+
+## 2.2. Rename Variables
+```{r rename}
+df = df %>%
+  rename(ADI = ADINAT) %>%
+  rename(Violence_Exposure = INDV) %>%
+  rename(RT_Amygdala_Threat = RTBL009) %>%
+  rename(LF_Amygdala_Threat = LFBL009) %>%
+  rename(RT_Amygdala_Neutral = RTBL015) %>%
+  rename(LF_Amygdala_Neutral = LFBL015) %>%
+  rename(Parental_Nurturance = TRINVOL) %>%
+  rename(Family_Income = ANNINC) %>%
+  rename(Parent_Education = PCEDUC) %>%
+  rename(Twin_Age = TWAGE) %>%
+  rename(Twin_Gender = TWSEX) %>%
+  rename(Twin_Race = TWRACER)
+```
+
+# 3. Descriptives
+
+## 3.1. Main Study Variables
+```{r descriptives}
+as.data.frame(psych::describe(dplyr::select(df, ADI, Violence_Exposure, RT_Amygdala_Threat, LF_Amygdala_Threat,
+                                     RT_Amygdala_Neutral, LF_Amygdala_Neutral, Parental_Nurturance,
+                                     Family_Income, Parent_Education, Twin_Age)))
+```
+
+## 3.2. Demographics
+```{r demos}
+demos = select(df, Twin_Age, Twin_Gender, Twin_Race, Parent_Education, Family_Income)
+apply((demos), 2, table)
+prop.table(table(df$Twin_Gender))
+prop.table(table(df$Parent_Education))
+prop.table(table(df$Family_Income))
+```
+
+## 3.3. Violence Exposure
+```{r ecv_hist, warning = FALSE, message = FALSE}
+df %>%
+  ggplot(aes(x = Violence_Exposure)) + 
+  geom_histogram(fill = 'white', col = 'black') +
+  labs(title = 'Histogram of Twin Exposure to Community Violence',
+       x = 'Frequency of Violence Exposure', y = 'Count') + 
+  theme_classic() + theme(axis.title.x = element_text(size = 12, family = "sans"), 
+                          axis.title.y = element_text(size = 12, family = "sans"),
+                          title = element_text(size = 12, face = 'bold', family = 'sans'))
+```
+
+## 3.4. Area Deprivation Index
+```{r adi_hist, warning=FALSE, message=FALSE}
+df %>%
+  ggplot(aes(x = ADI)) + 
+  geom_histogram(fill = 'white', col = 'black') + 
+  labs(title = 'Histogram of Neighborhood Disadvantage',
+       x = 'Area Deprivation Index', y = 'Count') + 
+  theme_classic() + theme(axis.title.x = element_text(size = 12, family = "sans"), 
+                          axis.title.y = element_text(size = 12, family = "sans"),
+                          title = element_text(size = 12, face = 'bold', family = 'sans'))
+```
+
+# 4. Correlations
+
+## 4.1. Correlation Matrix
+```{r corr_matrix}
+x = dplyr::select(df, ADI, Violence_Exposure, RT_Amygdala_Threat, LF_Amygdala_Threat,
+                  RT_Amygdala_Neutral, LF_Amygdala_Neutral, Parental_Nurturance, 
+                  Family_Income, Parent_Education, Twin_Age, Twin_Gender, Twin_Race)
+rcorr(as.matrix(x))
+```
+
+## 4.2. Correlation Plot
+```{r corr_plot}
+res = cor(x, use = "complete.obs", method = "pearson")
+corrplot.mixed(res, lower = "number", upper = "square", number.cex = 0.9, tl.cex = 0.9, tl.pos = "lt", tl.col = "black")
+```
+
+## 4.3. ECV & Amygdala Reactivity
+```{r corr_ecv_amy}
+y = dplyr::select(df, Violence_Exposure, RT_Amygdala_Threat, LF_Amygdala_Threat, 
+                  RT_Amygdala_Neutral, LF_Amygdala_Neutral)
+cor(y, method = "pearson", use = "complete.obs")
+rcorr(as.matrix(y))
+
+pval = c(0.0057, 0.3790, 0.9464, 0.7165)
+p.adjust(pval, method = "bonferroni")
+p.adjust(pval, method = "fdr")
+```
+
+Exposure to community violence is only associated with right amygdala reactivity to threat.
+
+## 4.4. Scatterplot (ECV & RT Amygdala)
+```{r scatter, warning=FALSE, message=FALSE}
+df %>%
+  ggplot(aes(x = Violence_Exposure, y = RT_Amygdala_Threat)) + 
+  geom_point(shape = 18, color = '#000099', alpha = 0.5, size = 3) + 
+  geom_smooth(method = 'lm', color = '#FFCC00') + 
+  labs(title = 'Association between Violence Exposure & Amygdala Reactivity',
+       x = 'Exposure to Community Violence', 
+       y = 'Right Amygdala\n Reactivity to Threat') + 
+  theme_bw() + theme(axis.title.x = element_text(size=12, family='sans'),
+                     axis.title.y = element_text(size=12, family='sans'),
+                     title = element_text(size = 12, face = 'bold', family = 'sans'))
+```
+
+# 5. Missing Data Analysis
+```{r define_missing, message=FALSE}
+df$ADI.miss = ifelse(!is.na(df$ADI), "Not Missing", "Missing")
+df$ECV.miss = ifelse(!is.na(df$Violence_Exposure), "Not Missing", "Missing")
+df$MRI.miss = ifelse(!is.na(df$RT_Amygdala_Threat), "Not Missing", "Missing")
+df$Nurture.miss = ifelse(!is.na(df$Parental_Nurturance), "Not Missing", "Missing")
+
+missing = dplyr::select(df, ADI.miss, ECV.miss, MRI.miss, Nurture.miss)
+apply((missing), 2, table)
+```
+
+## 5.1 Missing Data with Demos
+
+### 5.1.1. Twin Gender
+```{r gender_miss}
+# Gender 0 = male; 1 = female
+chisq.test(table(df$Twin_Gender, df$ADI.miss))
+chisq.test(table(df$Twin_Gender, df$ECV.miss))
+
+chisq.test(table(df$Twin_Gender, df$MRI.miss))
+table(df$Twin_Gender, df$MRI.miss)
+
+chisq.test(table(df$Twin_Gender, df$Nurture.miss))
+table(df$Twin_Gender, df$Nurture.miss)
+```
+
+Examining the patterns of missing data revealed that twin gender was associated with missing data on the parental nurturance variable ($X^2(1) = 55.8,p <.001$) and fMRI data ($X^2(1) = 5.5,p=.02$), such that males were more likely to be missing data on these measures. 
+
+### 5.1.2. Twin Race
+```{r race_miss}
+# Race/Ethnicity (0 = Non-White; 1 = White)
+chisq.test(table(df$Twin_Race, df$ADI.miss))
+
+chisq.test(table(df$Twin_Race, df$ECV.miss))
+table(df$Twin_Race, df$ECV.miss)
+
+chisq.test(table(df$Twin_Race, df$MRI.miss))
+table(df$Twin_Race, df$MRI.miss)
+
+chisq.test(table(df$Twin_Race, df$Nurture.miss))
+table(df$Twin_Race, df$Nurture.miss)
+```
+
+Twin race/ethnicity was associated with missing data on the indirect violence variable ($X^2(1) = 17.9,p<.001$) and the parental nurturance variable ($X^2(1) = 21.5,p<.001$), such that twins with available data on these measures were more likely to be non-Hispanic White. 
+
+### 5.1.3. Twin Age
+```{r age_miss}
+t.test(df$Twin_Age ~ df$ADI.miss)
+t.test(df$Twin_Age ~ df$ECV.miss)
+t.test(df$Twin_Age ~ df$MRI.miss)
+t.test(df$Twin_Age ~ df$Nurture.miss)
+```
+
+Lastly, twin age was associated with missing data on the indirect violence variable ($t(706)=-5.7, p<.001$), the parental nurturance variable ($t(706)=-10.1, p<.001$), and fMRI data ($t(706)=-4.6, p<.001$), such that older twins were more likely to have available data on these measures. 
+
+Because of this, twin gender, race/ethnicity, and age were all included as covariates in all models examined in SPM12 and the mediation and moderated mediation models in Mplus. Missing data on all other variables were not associated with twin gender, race/ethnicity, or age ($p’s > .05$).
+
+# 6. Scale Study Variables
+```{r scale}
+df$ADI_Z = scale(df$ADI, center = TRUE, scale = TRUE)
+df$ECV_Z = scale(df$Violence_Exposure, center = TRUE, scale = TRUE)
+df$RT_Amygdala_Threat_Z = scale(df$RT_Amygdala_Threat, center = TRUE, scale = TRUE)
+df$LF_Amygdala_Threat_Z = scale(df$LF_Amygdala_Threat, center = TRUE, scale = TRUE)
+df$RT_Amygdala_Neutral_Z = scale(df$RT_Amygdala_Neutral, center = TRUE, scale = TRUE)
+df$LF_Amygdala_Neutral_Z = scale(df$LF_Amygdala_Neutral, center = TRUE, scale = TRUE)
+df$Nurture_Z = scale(df$Parental_Nurturance, center = TRUE, scale = TRUE)
+```
+
+# 7. Select Variables for Mplus Models
+```{r select}
+vars <- dplyr::select(df, FAMID, MTWINSID, Twin_Gender, Twin_Age, Twin_Race, Parent_Education, Family_Income, 
+                      ADI, ADI_Z, Violence_Exposure, ECV_Z, RT_Amygdala_Threat, RT_Amygdala_Threat_Z, 
+                      LF_Amygdala_Threat, LF_Amygdala_Threat_Z, RT_Amygdala_Neutral, RT_Amygdala_Neutral_Z,
+                      LF_Amygdala_Neutral, LF_Amygdala_Neutral_Z, Parental_Nurturance, Nurture_Z)
+
+#write.csv(vars, paste0("mtwins_ecv_", format(Sys.time(), "%m%d%Y"),".csv"), quote = F, row.names=FALSE, na="-9999")
+```
