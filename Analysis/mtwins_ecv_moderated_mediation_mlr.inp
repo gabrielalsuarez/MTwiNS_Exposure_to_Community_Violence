@@ -1,0 +1,108 @@
+TITLE: GLS MTwiNS ADI-ECV-AMY Moderated Mediation
+
+DATA: 
+	FILE IS mtwins_ecv_03122023.csv; 
+	FORMAT IS FREE;
+	TYPE IS INDIVIDUAL;
+
+VARIABLE:
+	NAMES ARE famid twinid twsex twage twrace pceduc income
+	adi adiz ecv ecvz rthreat rthreatz lthreat lthreatz
+	rneut rneutz lneut lneutz nurture nurturez;
+	
+	USEVARIABLES ARE famid twage twsex twrace 
+	rthreatz ecvz adiz nurturez adinur ecvnur;
+
+	! X = adiz
+	! Y = rthreatz
+	! M = ecvz
+	! W = nurturez
+	
+	MISSING ARE ALL (-9999);
+	
+	CLUSTER = famid;
+
+DEFINE:
+	! Grand mean center predictor variables
+
+	CENTER ecvz adiz nurturez (GRANDMEAN);
+	
+	! Define the interaction terms (XW & MW)
+	adinur = nurturez* adiz; !X*W
+	ecvnur = nurturez* ecvz; !M*W
+	
+ANALYSIS:
+	TYPE = COMPLEX;
+	ESTIMATOR = MLR;
+
+MODEL:
+	[ecvz] (a0);  
+	ecvz ON adiz (a1); 
+	ecvz ON nurturez (a2);
+	ecvz ON adinur (a3);
+	ecvz ON twage twsex twrace;
+	
+	[rthreatz] (b0);
+	rthreatz ON ecvz (b1);
+	rthreatz ON nurturez (b2);
+	rthreatz ON ecvnur (b3);
+	rthreatz ON twage twsex twrace;
+	
+	rthreatz ON adiz (cdash);
+		
+	adiz ecvz nurturez adinur ecvnur
+	twage twsex twrace;
+	
+! Use model constraint subcommand to test conditional indirect effects
+! You need to pick low, medium and high moderator values for W
+! for example, of 1 SD below mean, mean, 1 SD above mean
+! 1 moderator, 3 values for it (-1, 0, 1)
+! arbitrary naming convention for conditional indirect & total effects
+! e.g., MED_W = medium value of W, etc.
+
+MODEL CONSTRAINT:
+	NEW(LOW_W MED_W HI_W
+	ILOW_LOW IMEW_MEW IHIW_HIW
+	TLOW_LOW TMEW_MEW THIW_HIW);
+	
+	LOW_W = -1; ! low value of W
+	MED_W = 0; ! medium value of W
+	HI_W = 1; ! high value of W
+
+! Calc conditional indirect effects for each combination of moderator values
+! and index/indices of moderated mediation
+
+	ILOW_LOW = a1*b1 + a3*b1*LOW_W + a1*b3*LOW_W + a3*b3*LOW_W*LOW_W;
+	IMEW_MEW = a1*b1 + a3*b1*MED_W + a1*b3*MED_W + a3*b3*MED_W*MED_W;
+	IHIW_HIW = a1*b1 + a3*b1*HI_W + a1*b3*HI_W + a3*b3*HI_W*HI_W;
+	
+
+! Calc conditional total effects for each combination of moderator values
+	TLOW_LOW = ILOW_LOW + cdash;
+	TMEW_MEW = IMEW_MEW + cdash;
+	THIW_HIW = IHIW_HIW + cdash;
+
+! Use loop plot to plot conditional indirect effect of X on Y for each combination of low, med, high moderator values
+! Could be edited to show conditional direct or conditional total effects instead
+! NOTE - values of 1,5 in LOOP() statement need to be replaced by
+! logical min and max limits of predictor X used in analysis
+
+    PLOT(PLOW_LOW PMEW_MEW PHIW_HIW);
+
+    LOOP(ADINAT,-2.5,2,.5);
+
+    PLOW_LOW = ILOW_LOW*ADINAT;
+    PMEW_MEW = IMEW_MEW*ADINAT;
+    PHIW_HIW = IHIW_HIW*ADINAT;
+
+PLOT:
+   TYPE = plot2;
+
+OUTPUT:
+   sampstat cinterval standardized tech1 tech3 tech4;
+
+!SAVEDATA: 
+   !File is moderated-mediation_ecv_output.dat;
+   !Sample is moderated-mediation_ecv_sample.dat;
+   !Results are moderated-mediation_ecv_results.dat;
+	
