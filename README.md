@@ -24,9 +24,9 @@ The Analysis folder contains 5 files:
 
 The SPM12 folder contains the requisite files for extracting amygdala activation for the main effects of the socioemotional faces fMRI task for our two planned contrasts:
 
- - `con_0009.txt`: 
- - `con_0015.txt`:
- - `estimate_faces_totalSample.m` & `estimate_faces_totalSample_job.m`:
- - `scan.txt`:
- - `specify_faces_totalSample.m` & `specify_faces_totalSample_job.m`:
- - `sublist.txt`:
+ - `con_0009.txt`: file paths to individual contrast images (.nii) for the contrast (fearful + angry faces > shapes)
+ - `con_0015.txt`: file paths to individual contrast images (.nii) for the contrast (neutral faces > shapes)
+ - `estimate_faces_totalSample.m` & `estimate_faces_totalSample_job.m`: Matlab code to estimate the main effects models for the 2 planned contrasts.
+ - `scan.txt`: Scan type covariate information (0 = spiral; 1 = multiband)
+ - `specify_faces_totalSample.m` & `specify_faces_totalSample_job.m`: Matlab code used to specify the desired model examining the main effects for the 2 planned contrasts with scan type included as a covariate.
+ - `sublist.txt`: List of subjects to be included in the analysis.
