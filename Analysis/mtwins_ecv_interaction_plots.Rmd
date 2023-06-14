@@ -1,0 +1,252 @@
+---
+title: "MTWINS Exposure to Community Violence Project"
+subtitle: "Interaction Analysis"
+author: "Gabriela Suarez"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    theme: spacelab
+    highlight: tango
+    toc: true
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+    code_folding: show
+    self_contained: yes
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Load packages
+```{r load_packages, message=FALSE}
+library(readr)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(interactions)
+```
+
+# 2. Load data
+```{r data, message=FALSE}
+cov = read_csv("mtwins_ecv_covariates.csv")
+amy = read_csv("main_effects_scan-cov_extracted_data.csv")
+```
+
+## 2.1. Prep & Merge datasets
+```{r prep, message=FALSE}
+cov[cov==-99] = NA
+df = full_join(cov, amy, by="MTWINSID") 
+```
+
+## 2.2. Rename Variables
+```{r rename, message=FALSE}
+df = df %>%
+  rename(ADI = ADINAT) %>%
+  rename(Violence_Exposure = INDV) %>%
+  rename(RT_Amygdala_Threat = RTBL009) %>%
+  rename(LF_Amygdala_Threat = LFBL009) %>%
+  rename(RT_Amygdala_Neutral = RTBL015) %>%
+  rename(LF_Amygdala_Neutral = LFBL015) %>%
+  rename(Parental_Nurturance = TRINVOL) %>%
+  rename(Family_Income = ANNINC) %>%
+  rename(Parent_Education = PCEDUC) %>%
+  rename(Twin_Age = TWAGE) %>%
+  rename(Twin_Gender = TWSEX) %>%
+  rename(Twin_Race = TWRACER)
+```
+
+# 3. Parental Nurturance
+
+```{r hist_nurture, warning=FALSE, message=FALSE}
+# Calculate mean and standard deviation
+mean_val = mean(df$Parental_Nurturance, na.rm = TRUE)
+sd_val = sd(df$Parental_Nurturance, na.rm = TRUE)
+
+# Create a histogram with different colors for bars within +/- 1 SD from the mean
+hist = df %>%
+  ggplot(aes(x = Parental_Nurturance)) + 
+    geom_histogram(aes(fill = cut(Parental_Nurturance, 
+                                  breaks = c(-Inf, mean_val - sd_val, mean_val + sd_val, Inf),
+                                  labels = c('-1 SD', 'Mean', '+1 SD'))),
+                   binwidth = 1, colour = 'black') + 
+    scale_fill_manual(values = c("#000099", "#56B4E9", "#FFCC00"), name = 'Parental\nNurturance') + 
+    labs(x = 'Parental Nurturance', y = 'Count', ) + 
+    theme_classic() + theme(text = element_text(size = 14, family = "sans")) + 
+  theme(legend.position = "top")
+hist
+
+ggsave("nurture_hist.pdf", plot=hist, width = 4.5, height = 4, unit = "in", dpi=1200)
+```
+
+
+# 4. Interactions
+
+## 4.1. a Path: Parental involvement moderates the link between ADI and ECV
+
+Visualize using package "interactions"
+
+```{r a_path_out}
+aPath = lm(data=df, Violence_Exposure ~ ADI * Parental_Nurturance)
+summary(aPath)
+```
+
+### 4.1.1. Johnson-Neyman Plot
+```{r a_path_johnson-neyman, warning=FALSE, message=FALSE}
+sim_slopes(aPath, pred = ADI, modx = Parental_Nurturance, jnplot = TRUE)
+
+#Run this line of code with the predictor and the moderator reversed to get the region of significance
+sim_slopes(aPath, pred = Parental_Nurturance, modx = ADI, jnplot = TRUE) 
+
+interact_plot(aPath, pred = ADI, modx = Parental_Nurturance, 
+              interval = TRUE, int.width = 0.9, 
+              rug=TRUE, rug.sides = "bl")
+```
+
+### 4.1.2. Interaction Plot: Powerpoint Formatting
+```{r a_path_interact_ppt, warning=FALSE, message=FALSE}
+MIpalette = c("#000099", "#56B4E9", "#FFCC00")
+
+#This code creates a gray box to overlay on the interaction plot to show region of significance
+#Use the interval that you found from the simp_slopes code above for xmin and xmax
+ros = data.frame(xmin = 50.12,
+                 xmax = 99,
+                 ymin = -Inf, 
+                 ymax = Inf) #This code gets used in the interact_plot code - see geom_rect
+p1 = interact_plot(aPath, pred = ADI, modx = Parental_Nurturance, 
+                    interval = TRUE, int.width = 0.95, 
+                    rug = TRUE, rug.sides = 'bl', 
+                    modx.labels = c("-1 SD","Mean","+1 SD"), colors = MIpalette, 
+                    x.label = "Area Deprivation Index", 
+                    y.label = "Exposure to Community Violence", 
+                    legend.main = "Parental Nurturance", data = df) + 
+  geom_rect(data = ros, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = "lightgray", linetype = 0, alpha = .3, inherit.aes = FALSE) + 
+  theme_bw() + theme(text = element_text(size = 18, family = "Fira Sans")) + 
+  theme(legend.position = "top")
+p1
+
+ggsave("aPath_interact.png", plot=p1, width = 15, height = 15, unit = "cm", dpi=600)
+```
+
+### 4.1.3. Interaction Plot: Manuscript Formatting
+```{r a_path_interact_manuscript, warning=FALSE, message=FALSE}
+MIpalette = c("#000099", "#56B4E9", "#FFCC00")
+
+#This code creates a gray box to overlay on the interaction plot to show region of significance
+#Use the interval that you found from the simp_slopes code above for xmin and xmax
+ros = data.frame(xmin = 50.12,
+                 xmax = 99,
+                 ymin = -Inf, 
+                 ymax = Inf) #This code gets used in the interact_plot code - see geom_rect
+
+a = interact_plot(aPath, pred = ADI, modx = Parental_Nurturance, 
+                    interval = TRUE, int.width = 0.95, 
+                    rug = TRUE, rug.sides = 'bl', 
+                    modx.labels = c("-1 SD","Mean","+1 SD"), colors = MIpalette, 
+                    x.label = "Area Deprivation Index", 
+                    y.label = "Exposure to\nCommunity Violence", 
+                    legend.main = "Parental\nNurturance", data = df) + 
+  geom_rect(data = ros, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = "lightgray", linetype = 0, alpha = .3, inherit.aes = FALSE) + 
+  theme_classic() + theme(text = element_text(size = 14, family = "sans")) + 
+  theme(legend.position = "top")
+a
+
+ggsave("aPath_interact.png", plot=a, width = 4.5, height = 4, unit = "in", dpi=600)
+```
+
+### 4.1.4. How many participants lived in neighborhoods with ADI scores above 50.12 and also reported parental nurturance scores below 45.43?
+```{r a_path_table}
+df = df %>%
+  mutate(inter = if_else(ADI > 50.12 & Parental_Nurturance < 45.43, 1, 0))
+table(df$inter)
+prop.table(table(df$inter))
+```
+
+
+## 4.2 b Path: Parental involvement moderates the link betwee ECV and amygdala reactivity
+
+Visualize using package "interactions"
+
+```{r b_path_out}
+bPath <- lm(data=df, RT_Amygdala_Threat ~ Violence_Exposure * Parental_Nurturance)
+summary(bPath)
+```
+
+### 4.2.1. Johnson-Neyman Plot
+```{r b_path_johnson-neyman, warning=FALSE, message=FALSE}
+sim_slopes(bPath, pred = Violence_Exposure, modx = Parental_Nurturance, jnplot = TRUE)
+
+#Run this line of code with the predictor and the moderator reversed to get the region of significance
+sim_slopes(bPath, pred = Parental_Nurturance, modx = Violence_Exposure, jnplot = TRUE) 
+
+interact_plot(bPath, pred = Violence_Exposure, modx = Parental_Nurturance, 
+              interval = TRUE, int.width = 0.9, 
+              rug=TRUE, rug.sides = "bl")
+```
+
+### 4.2.2. Interaction Plot: Powerpoint Formatting
+```{r b_path_interact_ppt, warning=FALSE, message=FALSE}
+MIpalette = c("#000099", "#56B4E9", "#FFCC00")
+
+#This code creates a gray box to overlay on the interaction plot to show region of significance
+#Use the interval that you found from the simp_slopes code above for xmin and xmax
+ros = data.frame(xmin = 5.72,
+                 xmax = 28,
+                 ymin = -Inf, 
+                 ymax = Inf) #This code gets used in the interact_plot code - see geom_rect
+p1 = interact_plot(bPath, pred = Violence_Exposure, modx = Parental_Nurturance, 
+                    interval = TRUE, int.width = 0.95, 
+                    rug = TRUE, rug.sides = 'bl', 
+                    modx.labels = c("-1 SD","Mean","+1 SD"), colors = MIpalette, 
+                    x.label = "Exposure to Community Violence", 
+                    y.label = "Right Amygdala Reactivity\n to Threat", 
+                    legend.main = "Parental Nurturance", data = df) + 
+  geom_rect(data = ros, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = "lightgray", linetype = 0, alpha = .3, inherit.aes = FALSE) + 
+  theme_bw() + theme(text = element_text(size = 18, family = "Fira Sans")) + 
+  theme(legend.position = "top")
+p1
+
+ggsave("bPath_interact.png", plot=p1, width = 15, height = 15, unit = "cm", dpi=600)
+```
+
+### 4.2.3. Interaction Plot: Manuscript Formatting
+```{r b_path_interact_manuscript, warning=FALSE, message=FALSE}
+MIpalette = c("#000099", "#56B4E9", "#FFCC00")
+
+#This code creates a gray box to overlay on the interaction plot to show region of significance
+#Use the interval that you found from the simp_slopes code above for xmin and xmax
+ros = data.frame(xmin = 5.72,
+                 xmax = 28,
+                 ymin = -Inf, 
+                 ymax = Inf) #This code gets used in the interact_plot code - see geom_rect
+
+b = interact_plot(bPath, pred = Violence_Exposure, modx = Parental_Nurturance, 
+                    interval = TRUE, int.width = 0.95, 
+                    rug = TRUE, rug.sides = 'bl', 
+                    modx.labels = c("-1 SD","Mean","+1 SD"), colors = MIpalette, 
+                    x.label = "Exposure to Community Violence", 
+                    y.label = "Right Amygdala\nReactivity to Threat", 
+                    legend.main = "Parental\nNurturance", data = df) + 
+  geom_rect(data = ros, aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax),
+            fill = "lightgray", linetype = 0, alpha = .3, inherit.aes = FALSE) + 
+  theme_classic() + theme(text = element_text(size = 14, family = "sans")) + 
+  theme(legend.position = "top")
+b
+
+ggsave("bPath_interact.png", plot=b, width = 4.5, height = 4, unit = "in", dpi=600)
+```
+
+### 4.2.4. How many participants reported violence exposure above 5.72 and also reported parental nurturance scores below 38.96?
+```{r b_path_table}
+df = df %>%
+  mutate(inter = if_else(Violence_Exposure > 5.72 & Parental_Nurturance < 38.96, 1, 0))
+table(df$inter)
+prop.table(table(df$inter))
+```
+
+
