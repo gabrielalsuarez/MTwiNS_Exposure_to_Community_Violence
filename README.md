@@ -13,8 +13,7 @@ To address our primary aims, we extracted amygdala activation with scan acquisit
 
 The Analysis folder contains 5 files:
 
- - `mtwins_ecv_descriptive.pdf`:
- - `mtwins_ecv_descriptive.Rmd`:
+ - `mtwins_ecv_descriptive.pdf/Rmd`: This is the R Markdown code (and associated output, .pdf) used to compute descriptive statistics for the Methods section of the Registered report
  - `mtwins_ecv_interaction_plots.Rmd`:
  - `mtwins_ecv_mediation.inp`:
  - `mtwins_ecv_moderated_mediation.inp`:
