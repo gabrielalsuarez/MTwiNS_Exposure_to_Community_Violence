@@ -19,6 +19,7 @@ VARIABLE:
 ANALYSIS:
 	TYPE = COMPLEX;
 	ESTIMATOR = MLR;
+	!BOOTSTRAP = 5000;
 
 MODEL:
 	ecvz ON adiz twage twsex twrace pceduc income; !a path
