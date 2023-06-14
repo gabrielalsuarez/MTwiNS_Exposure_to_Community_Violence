@@ -11,4 +11,10 @@ To address our primary aims, we extracted amygdala activation with scan acquisit
 
 ## Analysis
 
-The Analysis folder contains 
+The Analysis folder contains 5 files:
+
+ - `mtwins_ecv_descriptive.pdf`:
+ - `mtwins_ecv_descriptive.Rmd`:
+ - `mtwins_ecv_interaction_plots.Rmd`:
+ - `mtwins_ecv_mediation.inp`:
+ - `mtwins_ecv_moderated_mediation.inp`:
